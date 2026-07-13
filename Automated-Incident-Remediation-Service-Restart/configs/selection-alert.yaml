@@ -1,0 +1,2 @@
+Conditions
+{{ $json.body.status }} is equal to firing

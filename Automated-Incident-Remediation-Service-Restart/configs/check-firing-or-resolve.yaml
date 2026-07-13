@@ -1,0 +1,2 @@
+Conditions
+{{ $json.result.text }} does not contain RESOLVED

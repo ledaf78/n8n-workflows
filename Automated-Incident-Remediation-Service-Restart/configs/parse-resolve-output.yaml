@@ -1,0 +1,102 @@
+// ============================================================
+// Code Node — Grafana Alert Formatter
+// Output : { content: "..." } agar bisa dibaca via {{ $json.content }}
+//          konsisten dengan format output Ollama (Simplify Output ON)
+// ============================================================
+
+// ── Deteksi sumber data secara fleksibel ───────────────────
+// Prioritas: $json.content dulu (jika dibungkus node sebelumnya),
+// lalu fallback ke $json langsung (jika webhook Grafana langsung masuk)
+const rawInput = $input.item.json.content ?? $input.item.json;
+
+// Jika rawInput adalah string JSON (misal dari node AI), parse dulu.
+// Jika sudah berupa object JavaScript, langsung pakai.
+const parsed = typeof rawInput === 'string' ? JSON.parse(rawInput) : rawInput;
+
+// Cari field 'body' di dalam parsed.
+// Jika tidak ada, anggap parsed itu sendiri sudah merupakan body-nya.
+const body = parsed.body ?? parsed;
+
+// ── Ekstrak semua field yang dibutuhkan ────────────────────
+const alert     = body.alerts?.[0] ?? {};
+const labels    = alert.labels ?? {};
+const status    = body.status;
+const alertName = labels.alertname ?? 'Unknown Alert';
+
+// PERBAIKAN BUG: baris asli tertulis [labels.name](http://labels.name)
+// karena artefak markdown saat copy-paste — yang benar adalah labels.name
+const service  = labels.name     ?? 'unknown';
+const instance = labels.instance ?? 'unknown';
+const host     = instance.split(':')[0]; // buang port :9100, ambil IP saja
+const state    = labels.state    ?? '-';
+const type     = labels.type     ?? '-';
+const job      = labels.job      ?? '-';
+
+// ── Hitung durasi downtime ─────────────────────────────────
+const startsAt = new Date(alert.startsAt);
+const endsAt   = new Date(alert.endsAt);
+const sentinel = new Date('0001-01-01T00:00:00Z');
+
+function formatDuration(ms) {
+  const totalSeconds = Math.floor(ms / 1000);
+  const hours   = Math.floor(totalSeconds / 3600);
+  const minutes = Math.floor((totalSeconds % 3600) / 60);
+  const seconds = totalSeconds % 60;
+  if (hours > 0)   return hours + 'j ' + minutes + 'm';
+  if (minutes > 0) return minutes + 'm ' + seconds + 'd';
+  return seconds + ' detik';
+}
+
+// Durasi hanya dihitung jika status resolved DAN waktu endsAt valid
+// (bukan sentinel '0001-01-01' yang berarti belum diisi Grafana)
+const duration = (status === 'resolved' && endsAt > sentinel)
+  ? formatDuration(endsAt - startsAt)
+  : null;
+
+// ── Format tanggal ke WIB ──────────────────────────────────
+function fmt(date) {
+  return date.toLocaleString('id-ID', { timeZone: 'Asia/Jakarta' });
+}
+
+// ── Bangun teks pesan ──────────────────────────────────────
+// Menggunakan string concatenation (+) — bukan template literal backtick —
+// untuk menghindari "Unterminated template" error yang bisa terjadi
+// ketika emoji tertentu mengandung unicode variation selector
+const statusEmoji = status === 'resolved' ? '✅' : '🚨';
+const statusLabel = status === 'resolved' ? 'RESOLVED' : 'FIRING';
+const stateEmoji  = state === 'failed' ? '🔴' : '🟢';
+
+let message = '';
+message += `${statusEmoji} [${statusLabel}] ${alertName}\n`;
+
+message += `🖥 Server\n`;
+message += `  Host    : \`${host}\`\n`;
+message += `  Service : \`${service}\`\n`;
+message += `  Job     : ${job}\n\n`;
+
+message += `${stateEmoji} Status Service\n`;
+message += `  State   : ${state}\n`;
+message += `  Type    : ${type}\n\n`;
+
+message += `🕐 *Time*\n`;
+message += `  Resolve : ${startsAt.toLocaleString('id-ID', { timeZone: 'Asia/Jakarta' })}\n`;
+
+
+// ── Return dengan field "content" ─────────────────────────
+// Menggunakan "content" agar konsisten dengan output Ollama,
+// sehingga node Intent Parser bisa membaca {{ $json.content }}
+// tanpa perlu tahu apakah data ini berasal dari Grafana atau AI
+return {
+  json: {
+    content    : message,   // ← dibaca via {{ $json.content }}
+    intent     : status === 'resolved' ? 'RESOLVE' : 'ALERT',
+    status,
+    isResolved : status === 'resolved',
+    isFiring   : status === 'firing',
+    service,
+    host,
+    instance,
+    alertName,
+    duration   : duration ?? '-',
+  }
+};

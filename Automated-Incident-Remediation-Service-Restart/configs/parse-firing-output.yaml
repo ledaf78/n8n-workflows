@@ -1,0 +1,93 @@
+// ============================================================
+// Code Node — Grafana Alert Formatter untuk Telegram
+// Fix: robust source detection dengan fallback bertingkat
+// ============================================================
+
+// ── PERBAIKAN UTAMA: Deteksi sumber data secara fleksibel ──
+// Urutan prioritas:
+//   1. $json.content  → jika data dibungkus oleh node sebelumnya
+//   2. $json          → jika data adalah webhook Grafana langsung
+// Setelah itu, kita cari field 'body' di dalamnya.
+// Kalau tidak ada 'body', asumsikan object itu sendiri adalah body.
+const rawInput = $input.item.json.content ?? $input.item.json;
+
+// Guard: kalau rawInput ternyata string JSON (dari node AI misalnya),
+// parse dulu. Kalau sudah object, langsung pakai.
+const parsed = typeof rawInput === 'string' ? JSON.parse(rawInput) : rawInput;
+
+// Cari 'body' di dalam parsed. Kalau tidak ada, 
+// anggap parsed itu sendiri sudah merupakan body-nya.
+const body = parsed.body ?? parsed;
+
+// ── Semua baris di bawah ini tidak berubah ─────────────────
+const alert     = body.alerts?.[0] ?? {};
+const labels    = alert.labels ?? {};
+const values    = alert.values ?? {};
+
+const status    = body.status;
+const alertName = labels.alertname     ?? 'Unknown Alert';
+const service   = labels.name          ?? 'unknown';
+const instance  = labels.instance      ?? 'unknown';
+const host      = instance.split(':')[0];
+const state     = labels.state         ?? '-';
+const type      = labels.type          ?? '-';
+const job       = labels.job           ?? '-';
+
+const startsAt = new Date(alert.startsAt);
+const endsAt   = new Date(alert.endsAt);
+const sentinel = new Date('0001-01-01T00:00:00Z');
+
+function formatDuration(ms) {
+  const totalSeconds = Math.floor(ms / 1000);
+  const hours   = Math.floor(totalSeconds / 3600);
+  const minutes = Math.floor((totalSeconds % 3600) / 60);
+  const seconds = totalSeconds % 60;
+  if (hours > 0)   return `${hours}j ${minutes}m`;
+  if (minutes > 0) return `${minutes}m ${seconds}d`;
+  return `${seconds} detik`;
+}
+
+const duration = (status === 'resolved' && endsAt > sentinel)
+  ? formatDuration(endsAt - startsAt)
+  : null;
+
+const statusEmoji = status === 'resolved' ? '✅' : '🚨';
+const statusLabel = status === 'resolved' ? 'RESOLVED' : 'FIRING';
+const stateEmoji  = state === 'failed' ? '🔴' : '🟢';
+
+let message = '';
+message += `${statusEmoji} *[${statusLabel}] ${alertName}*\n`;
+
+message += `🖥 *Server*\n`;
+message += `  Host    : \`${host}\`\n`;
+message += `  Service : \`${service}\`\n`;
+message += `  Job     : ${job}\n\n`;
+
+message += `${stateEmoji} *Status Service*\n`;
+message += `  State   : ${state}\n`;
+message += `  Type    : ${type}\n\n`;
+
+message += `🕐 *Time*\n`;
+message += `  Start : ${startsAt.toLocaleString('id-ID', { timeZone: 'Asia/Jakarta' })}\n`;
+
+if (status === 'resolved') {
+  message += `  Selesai : ${endsAt.toLocaleString('id-ID', { timeZone: 'Asia/Jakarta' })}\n`;
+  if (duration) message += `  Durasi  : ${duration}\n`;
+}
+message += '\n';
+
+
+return {
+  json: {
+    intent     : status === 'resolved' ? 'RESOLVE' : 'ALERT',
+    status,
+    isResolved : status === 'resolved',
+    isFiring   : status === 'firing',
+    service,
+    host,
+    instance,
+    alertName,
+    duration   : duration ?? '-',
+    telegramMessage: message,
+  }
+};

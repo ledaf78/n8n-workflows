@@ -1,0 +1,2 @@
+Command
+ssh -o StrictHostKeyChecking=no -i {{ $('Parse Script').item.json.privateKeyPath }} {{ $('Parse Script').item.json.username }}@{{ $('Parse Script').item.json.host }} "sudo systemctl status {{ $('Parse Firing Output').item.json.service }}" || true

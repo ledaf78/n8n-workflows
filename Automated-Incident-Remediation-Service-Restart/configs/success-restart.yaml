@@ -1,0 +1,3 @@
+Text
+Successfull restarting 
+{{ $json.stdout }}

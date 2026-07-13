@@ -1,0 +1,2 @@
+Command
+/home/node/secrets/get-key.sh {{ $('Parse Firing Output').item.json.host }}

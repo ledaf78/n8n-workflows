@@ -1,0 +1,2 @@
+Command
+sudo journalctl -u {{ $('Selection Alert').item.json.body.alerts[0].labels.name }} --no-pager -n 50

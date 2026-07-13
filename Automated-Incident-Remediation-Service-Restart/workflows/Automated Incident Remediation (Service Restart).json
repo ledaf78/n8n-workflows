@@ -1,0 +1,683 @@
+{
+  "name": "Automated Incident Remediation (Service Restart)",
+  "nodes": [
+    {
+      "parameters": {
+        "chatId": "1379025645",
+        "text": "=Attempting to restart...",
+        "additionalFields": {
+          "appendAttribution": false
+        }
+      },
+      "id": "6c01f946-ca2d-4f11-99c6-751faa0072c7",
+      "name": "Restart Message",
+      "type": "n8n-nodes-base.telegram",
+      "position": [
+        928,
+        992
+      ],
+      "typeVersion": 1.2,
+      "webhookId": "854a96f6-b00d-47f6-8d43-b94033a1a0c2",
+      "credentials": {
+        "telegramApi": {
+          "id": "jvLxw0sF4bgtLkOG",
+          "name": "Bot Fadel Telegram account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "chatId": "1379025645",
+        "text": "=Successfull restarting \n{{ $json.stdout }}",
+        "additionalFields": {
+          "appendAttribution": false,
+          "parse_mode": "HTML"
+        }
+      },
+      "id": "591ba263-fe34-494f-8618-115ffb18f6c1",
+      "name": "Success restart",
+      "type": "n8n-nodes-base.telegram",
+      "position": [
+        2400,
+        880
+      ],
+      "typeVersion": 1.2,
+      "webhookId": "165459e9-cfdd-46df-b843-e262a007a0a0",
+      "credentials": {
+        "telegramApi": {
+          "id": "jvLxw0sF4bgtLkOG",
+          "name": "Bot Fadel Telegram account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "content": "## Incoming Webhook\n\nuse a webhook from Grafana Monitoring",
+        "height": 304
+      },
+      "id": "fe39c667-0499-426a-baaf-b5ad9e732a00",
+      "name": "Sticky Note",
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        -944,
+        1008
+      ],
+      "typeVersion": 1
+    },
+    {
+      "parameters": {
+        "content": "## Action Restart Service\nAutomatically restart a given to a service",
+        "height": 432,
+        "width": 1472
+      },
+      "id": "585ea124-0fcf-4eee-ab61-7549b809ceb2",
+      "name": "Sticky Note3",
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        1120,
+        864
+      ],
+      "typeVersion": 1
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "79002599-1c14-4664-9434-12fdee70fea3",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        -864,
+        1168
+      ],
+      "id": "7b52aef7-5e16-4835-9721-3a3403e49fab",
+      "name": "Webhook",
+      "webhookId": "79002599-1c14-4664-9434-12fdee70fea3"
+    },
+    {
+      "parameters": {
+        "content": "## Send Alert ",
+        "height": 256,
+        "width": 576
+      },
+      "id": "df0d4638-2408-4ca7-a78b-7628aba91aae",
+      "name": "Sticky Note5",
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        480,
+        928
+      ],
+      "typeVersion": 1
+    },
+    {
+      "parameters": {
+        "chatId": "=1379025645",
+        "text": "={{ $json.content }}",
+        "replyMarkup": "inlineKeyboard",
+        "additionalFields": {
+          "appendAttribution": false,
+          "parse_mode": "HTML"
+        }
+      },
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        528,
+        1008
+      ],
+      "id": "84220a2b-8fa5-42a5-a143-81d6ffe40e8a",
+      "name": "Send Alert Message",
+      "webhookId": "1efb0627-614c-448b-bf0f-7cd94caed222",
+      "credentials": {
+        "telegramApi": {
+          "id": "jvLxw0sF4bgtLkOG",
+          "name": "Bot Fadel Telegram account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "modelId": {
+          "__rl": true,
+          "value": "minimax-m2.5",
+          "mode": "list",
+          "cachedResultName": "minimax-m2.5"
+        },
+        "messages": {
+          "values": [
+            {
+              "content": "=You are a senior IT specialist experienced in debugging distributed systems, containers, Linux services, and application logs. When the user provides log output or an error message, you must:\n\nAnalyze the logs carefully and respond in a structured format:\n\nSummary\nShort, concise explanation of what's happening.\n\nMost Likely Root Cause\nOne clear sentence. If unknown, say so and state what’s missing.\n\nImpact\nExplain if functionality is broken, partially limited, or unaffected.\n\nKey Evidence From Logs\nList only the relevant log lines and briefly explain each.\n\nSeverity Level\nRate 1–5 (1 negligible, 5 critical). Include a one-line justification.\n\nRecommended Next Steps\nBullet actionable steps. Include different paths if needed (example: “If you use USB devices…”).\n\nFollow-up / What to Monitor\nOne or two items the user should watch for or collect next.\n\nGuidelines:\n\nBe concise and structured. No long essays.\n\nNever just quote logs back. Interpret them.\n\nIf assumptions are required, state them explicitly.\n\nIf the logs do not contain enough info, say so and request specifics.\n\nTone should be calm, confident, and clear like a senior engineer helping a teammate.\n\nAvoid unnecessary technical jargon unless required.\n\nFocus on actionable clarity.",
+              "role": "assistant"
+            },
+            {
+              "content": "={{ $('get logs alert').item.json.stdout }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.ollama",
+      "typeVersion": 1,
+      "position": [
+        80,
+        1008
+      ],
+      "id": "98b568b2-279b-40c5-b6be-81d5ce13d324",
+      "name": "AI Analyze Logs Alert",
+      "credentials": {
+        "ollamaApi": {
+          "id": "yPzro9tPuV7Sy97w",
+          "name": "Ollama account Fadel"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "8099586a-96c2-4e14-b43b-ccf5b41d7b01",
+              "leftValue": "={{ $json.body.status }}",
+              "rightValue": "firing",
+              "operator": {
+                "type": "string",
+                "operation": "equals",
+                "name": "filter.operator.equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        -640,
+        1168
+      ],
+      "id": "21358b38-fa0d-4d04-81c6-322dea62cf09",
+      "name": "Selection Alert"
+    },
+    {
+      "parameters": {
+        "content": "## AI Alert Analyzer\nAutomatically Analayze incoming alert\n",
+        "height": 224,
+        "width": 880
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        -496,
+        928
+      ],
+      "typeVersion": 1,
+      "id": "f1ccb788-ad75-477c-88c6-01cfdf0b67a7",
+      "name": "Sticky Note6"
+    },
+    {
+      "parameters": {
+        "amount": 60
+      },
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [
+        1840,
+        896
+      ],
+      "id": "4d3d2f79-c54c-4c15-8487-06e8f6c5cd47",
+      "name": "Wait",
+      "webhookId": "cd42765c-d6ad-437f-b600-ec9ff0d9636b"
+    },
+    {
+      "parameters": {
+        "chatId": "=1379025645",
+        "text": "={{ $json.telegramMessage }}I will analyze...",
+        "replyMarkup": "inlineKeyboard",
+        "additionalFields": {
+          "appendAttribution": false
+        }
+      },
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        -256,
+        1008
+      ],
+      "id": "c25e45b8-714d-40d7-8fd2-78b6350d3a5a",
+      "name": "Send Alert",
+      "webhookId": "1efb0627-614c-448b-bf0f-7cd94caed222",
+      "credentials": {
+        "telegramApi": {
+          "id": "jvLxw0sF4bgtLkOG",
+          "name": "Bot Fadel Telegram account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "command": "=sudo journalctl -u {{ $('Selection Alert').item.json.body.alerts[0].labels.name }} --no-pager -n 50"
+      },
+      "id": "f851b9f0-fbc4-4e1e-a285-1337bc6c1da1",
+      "name": "get logs alert",
+      "type": "n8n-nodes-base.ssh",
+      "position": [
+        -96,
+        1008
+      ],
+      "typeVersion": 1,
+      "credentials": {
+        "sshPassword": {
+          "id": "JUiEy3kgcjCb0YDv",
+          "name": "Server N8N Fadel"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// ============================================================\n// Code Node — Grafana Alert Formatter untuk Telegram\n// Fix: robust source detection dengan fallback bertingkat\n// ============================================================\n\n// ── PERBAIKAN UTAMA: Deteksi sumber data secara fleksibel ──\n// Urutan prioritas:\n//   1. $json.content  → jika data dibungkus oleh node sebelumnya\n//   2. $json          → jika data adalah webhook Grafana langsung\n// Setelah itu, kita cari field 'body' di dalamnya.\n// Kalau tidak ada 'body', asumsikan object itu sendiri adalah body.\nconst rawInput = $input.item.json.content ?? $input.item.json;\n\n// Guard: kalau rawInput ternyata string JSON (dari node AI misalnya),\n// parse dulu. Kalau sudah object, langsung pakai.\nconst parsed = typeof rawInput === 'string' ? JSON.parse(rawInput) : rawInput;\n\n// Cari 'body' di dalam parsed. Kalau tidak ada, \n// anggap parsed itu sendiri sudah merupakan body-nya.\nconst body = parsed.body ?? parsed;\n\n// ── Semua baris di bawah ini tidak berubah ─────────────────\nconst alert     = body.alerts?.[0] ?? {};\nconst labels    = alert.labels ?? {};\nconst values    = alert.values ?? {};\n\nconst status    = body.status;\nconst alertName = labels.alertname     ?? 'Unknown Alert';\nconst service   = labels.name          ?? 'unknown';\nconst instance  = labels.instance      ?? 'unknown';\nconst host      = instance.split(':')[0];\nconst state     = labels.state         ?? '-';\nconst type      = labels.type          ?? '-';\nconst job       = labels.job           ?? '-';\n\nconst startsAt = new Date(alert.startsAt);\nconst endsAt   = new Date(alert.endsAt);\nconst sentinel = new Date('0001-01-01T00:00:00Z');\n\nfunction formatDuration(ms) {\n  const totalSeconds = Math.floor(ms / 1000);\n  const hours   = Math.floor(totalSeconds / 3600);\n  const minutes = Math.floor((totalSeconds % 3600) / 60);\n  const seconds = totalSeconds % 60;\n  if (hours > 0)   return `${hours}j ${minutes}m`;\n  if (minutes > 0) return `${minutes}m ${seconds}d`;\n  return `${seconds} detik`;\n}\n\nconst duration = (status === 'resolved' && endsAt > sentinel)\n  ? formatDuration(endsAt - startsAt)\n  : null;\n\nconst statusEmoji = status === 'resolved' ? '✅' : '🚨';\nconst statusLabel = status === 'resolved' ? 'RESOLVED' : 'FIRING';\nconst stateEmoji  = state === 'failed' ? '🔴' : '🟢';\n\nlet message = '';\nmessage += `${statusEmoji} *[${statusLabel}] ${alertName}*\\n`;\n\nmessage += `🖥 *Server*\\n`;\nmessage += `  Host    : \\`${host}\\`\\n`;\nmessage += `  Service : \\`${service}\\`\\n`;\nmessage += `  Job     : ${job}\\n\\n`;\n\nmessage += `${stateEmoji} *Status Service*\\n`;\nmessage += `  State   : ${state}\\n`;\nmessage += `  Type    : ${type}\\n\\n`;\n\nmessage += `🕐 *Time*\\n`;\nmessage += `  Start : ${startsAt.toLocaleString('id-ID', { timeZone: 'Asia/Jakarta' })}\\n`;\n\nif (status === 'resolved') {\n  message += `  Selesai : ${endsAt.toLocaleString('id-ID', { timeZone: 'Asia/Jakarta' })}\\n`;\n  if (duration) message += `  Durasi  : ${duration}\\n`;\n}\nmessage += '\\n';\n\n\nreturn {\n  json: {\n    intent     : status === 'resolved' ? 'RESOLVE' : 'ALERT',\n    status,\n    isResolved : status === 'resolved',\n    isFiring   : status === 'firing',\n    service,\n    host,\n    instance,\n    alertName,\n    duration   : duration ?? '-',\n    telegramMessage: message,\n  }\n};"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -448,
+        1008
+      ],
+      "id": "cfa675b1-3684-4b13-85b2-dd8649f5a617",
+      "name": "Parse Firing Output"
+    },
+    {
+      "parameters": {
+        "jsCode": "// ============================================================\n// Code Node — Grafana Alert Formatter\n// Output : { content: \"...\" } agar bisa dibaca via {{ $json.content }}\n//          konsisten dengan format output Ollama (Simplify Output ON)\n// ============================================================\n\n// ── Deteksi sumber data secara fleksibel ───────────────────\n// Prioritas: $json.content dulu (jika dibungkus node sebelumnya),\n// lalu fallback ke $json langsung (jika webhook Grafana langsung masuk)\nconst rawInput = $input.item.json.content ?? $input.item.json;\n\n// Jika rawInput adalah string JSON (misal dari node AI), parse dulu.\n// Jika sudah berupa object JavaScript, langsung pakai.\nconst parsed = typeof rawInput === 'string' ? JSON.parse(rawInput) : rawInput;\n\n// Cari field 'body' di dalam parsed.\n// Jika tidak ada, anggap parsed itu sendiri sudah merupakan body-nya.\nconst body = parsed.body ?? parsed;\n\n// ── Ekstrak semua field yang dibutuhkan ────────────────────\nconst alert     = body.alerts?.[0] ?? {};\nconst labels    = alert.labels ?? {};\nconst status    = body.status;\nconst alertName = labels.alertname ?? 'Unknown Alert';\n\n// PERBAIKAN BUG: baris asli tertulis [labels.name](http://labels.name)\n// karena artefak markdown saat copy-paste — yang benar adalah labels.name\nconst service  = labels.name     ?? 'unknown';\nconst instance = labels.instance ?? 'unknown';\nconst host     = instance.split(':')[0]; // buang port :9100, ambil IP saja\nconst state    = labels.state    ?? '-';\nconst type     = labels.type     ?? '-';\nconst job      = labels.job      ?? '-';\n\n// ── Hitung durasi downtime ─────────────────────────────────\nconst startsAt = new Date(alert.startsAt);\nconst endsAt   = new Date(alert.endsAt);\nconst sentinel = new Date('0001-01-01T00:00:00Z');\n\nfunction formatDuration(ms) {\n  const totalSeconds = Math.floor(ms / 1000);\n  const hours   = Math.floor(totalSeconds / 3600);\n  const minutes = Math.floor((totalSeconds % 3600) / 60);\n  const seconds = totalSeconds % 60;\n  if (hours > 0)   return hours + 'j ' + minutes + 'm';\n  if (minutes > 0) return minutes + 'm ' + seconds + 'd';\n  return seconds + ' detik';\n}\n\n// Durasi hanya dihitung jika status resolved DAN waktu endsAt valid\n// (bukan sentinel '0001-01-01' yang berarti belum diisi Grafana)\nconst duration = (status === 'resolved' && endsAt > sentinel)\n  ? formatDuration(endsAt - startsAt)\n  : null;\n\n// ── Format tanggal ke WIB ──────────────────────────────────\nfunction fmt(date) {\n  return date.toLocaleString('id-ID', { timeZone: 'Asia/Jakarta' });\n}\n\n// ── Bangun teks pesan ──────────────────────────────────────\n// Menggunakan string concatenation (+) — bukan template literal backtick —\n// untuk menghindari \"Unterminated template\" error yang bisa terjadi\n// ketika emoji tertentu mengandung unicode variation selector\nconst statusEmoji = status === 'resolved' ? '✅' : '🚨';\nconst statusLabel = status === 'resolved' ? 'RESOLVED' : 'FIRING';\nconst stateEmoji  = state === 'failed' ? '🔴' : '🟢';\n\nlet message = '';\nmessage += `${statusEmoji} [${statusLabel}] ${alertName}\\n`;\n\nmessage += `🖥 Server\\n`;\nmessage += `  Host    : \\`${host}\\`\\n`;\nmessage += `  Service : \\`${service}\\`\\n`;\nmessage += `  Job     : ${job}\\n\\n`;\n\nmessage += `${stateEmoji} Status Service\\n`;\nmessage += `  State   : ${state}\\n`;\nmessage += `  Type    : ${type}\\n\\n`;\n\nmessage += `🕐 *Time*\\n`;\nmessage += `  Resolve : ${startsAt.toLocaleString('id-ID', { timeZone: 'Asia/Jakarta' })}\\n`;\n\n\n// ── Return dengan field \"content\" ─────────────────────────\n// Menggunakan \"content\" agar konsisten dengan output Ollama,\n// sehingga node Intent Parser bisa membaca {{ $json.content }}\n// tanpa perlu tahu apakah data ini berasal dari Grafana atau AI\nreturn {\n  json: {\n    content    : message,   // ← dibaca via {{ $json.content }}\n    intent     : status === 'resolved' ? 'RESOLVE' : 'ALERT',\n    status,\n    isResolved : status === 'resolved',\n    isFiring   : status === 'firing',\n    service,\n    host,\n    instance,\n    alertName,\n    duration   : duration ?? '-',\n  }\n};"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        176,
+        1184
+      ],
+      "id": "7d862d57-dd6e-43d7-991e-68705bd23c69",
+      "name": "Parse Resolve Output"
+    },
+    {
+      "parameters": {
+        "executeOnce": false,
+        "command": "=/home/node/secrets/get-key.sh {{ $('Parse Firing Output').item.json.host }}"
+      },
+      "type": "n8n-nodes-base.executeCommand",
+      "typeVersion": 1,
+      "position": [
+        1168,
+        992
+      ],
+      "id": "a47e4843-0ca0-4356-b04e-7715a4a49c9f",
+      "name": "Get Private Key",
+      "notesInFlow": false,
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "jsCode": "for (const item of $input.all()) {\n  try {\n    // Memeriksa apakah ada data di dalam stdout\n    if (item.json.stdout) {\n      \n      // Mem-parse string JSON dari stdout menjadi objek sungguhan\n      const parsedData = JSON.parse(item.json.stdout);\n\n      // Memindahkan semua kunci dan nilai ke tingkat teratas (root) item.json\n      Object.assign(item.json, parsedData);\n\n      // Membersihkan properti lama agar output n8n terlihat lebih rapi (Opsional)\n      delete item.json.stdout;\n      delete item.json.stderr;\n      delete item.json.exitCode;\n    }\n  } catch (error) {\n    // Jika output gagal diparse, tangkap errornya agar workflow tidak crash\n    item.json.error = \"Gagal mem-parse JSON: \" + error.message;\n  }\n}\n\nreturn $input.all();"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1440,
+        912
+      ],
+      "id": "cee16900-0fce-4079-9cbc-08942a029645",
+      "name": "Parse Script"
+    },
+    {
+      "parameters": {
+        "executeOnce": false,
+        "command": "=ssh -o StrictHostKeyChecking=no -i {{ $json.privateKeyPath }} {{ $json.username }}@{{ $json.host }} \"sudo systemctl restart {{ $('Parse Firing Output').item.json.service }}\" || true"
+      },
+      "type": "n8n-nodes-base.executeCommand",
+      "typeVersion": 1,
+      "position": [
+        1648,
+        912
+      ],
+      "id": "d038594c-a284-4d21-b77f-e5b03963c664",
+      "name": "Restart Service",
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "chatId": "1379025645",
+        "text": "={{ $json.stdout || $json.stderr }}",
+        "additionalFields": {
+          "appendAttribution": false,
+          "parse_mode": "HTML"
+        }
+      },
+      "id": "0f04396e-4f55-4760-8cef-5744c7016bbc",
+      "name": "Error Notification",
+      "type": "n8n-nodes-base.telegram",
+      "position": [
+        1888,
+        1136
+      ],
+      "typeVersion": 1.2,
+      "webhookId": "0a51c77b-3325-46d4-99c9-72471f7a1bff",
+      "credentials": {
+        "telegramApi": {
+          "id": "jvLxw0sF4bgtLkOG",
+          "name": "Bot Fadel Telegram account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "executeOnce": false,
+        "command": "=ssh -o StrictHostKeyChecking=no -i {{ $('Parse Script').item.json.privateKeyPath }} {{ $('Parse Script').item.json.username }}@{{ $('Parse Script').item.json.host }} \"sudo systemctl status {{ $('Parse Firing Output').item.json.service }}\" || true"
+      },
+      "type": "n8n-nodes-base.executeCommand",
+      "typeVersion": 1,
+      "position": [
+        2016,
+        896
+      ],
+      "id": "d711bca4-fc2a-437a-91aa-8354137da3e5",
+      "name": "Check Status Service",
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "898b584e-7731-4dee-8f85-f6ba1d39a412",
+              "leftValue": "={{ $json.stdout }}",
+              "rightValue": "failed",
+              "operator": {
+                "type": "string",
+                "operation": "notContains"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        2176,
+        896
+      ],
+      "id": "a1a4ab2b-0374-4d16-9339-ece2e10cc514",
+      "name": "Check Status"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "dbc51891-d58b-4cd9-9c4b-bda749375258",
+              "leftValue": "={{ $json.result.text }}",
+              "rightValue": "RESOLVED",
+              "operator": {
+                "type": "string",
+                "operation": "notContains"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        704,
+        1008
+      ],
+      "id": "ae521265-1209-4c73-973a-01907cf72eb2",
+      "name": "Check Firing or Resolve"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Restart Message": {
+      "main": [
+        [
+          {
+            "node": "Get Private Key",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "Selection Alert",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send Alert Message": {
+      "main": [
+        [
+          {
+            "node": "Check Firing or Resolve",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Analyze Logs Alert": {
+      "main": [
+        [
+          {
+            "node": "Send Alert Message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Selection Alert": {
+      "main": [
+        [
+          {
+            "node": "Parse Firing Output",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Parse Resolve Output",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Success restart": {
+      "main": [
+        []
+      ]
+    },
+    "Wait": {
+      "main": [
+        [
+          {
+            "node": "Check Status Service",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send Alert": {
+      "main": [
+        [
+          {
+            "node": "get logs alert",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "get logs alert": {
+      "main": [
+        [
+          {
+            "node": "AI Analyze Logs Alert",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse Firing Output": {
+      "main": [
+        [
+          {
+            "node": "Send Alert",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse Resolve Output": {
+      "main": [
+        [
+          {
+            "node": "Send Alert Message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Private Key": {
+      "main": [
+        [
+          {
+            "node": "Parse Script",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Error Notification",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse Script": {
+      "main": [
+        [
+          {
+            "node": "Restart Service",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Restart Service": {
+      "main": [
+        [
+          {
+            "node": "Wait",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Error Notification",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check Status Service": {
+      "main": [
+        [
+          {
+            "node": "Check Status",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        []
+      ]
+    },
+    "Check Status": {
+      "main": [
+        [
+          {
+            "node": "Success restart",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Error Notification",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check Firing or Resolve": {
+      "main": [
+        [
+          {
+            "node": "Restart Message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "380e84f0-feb9-4a5b-b12d-81838731f257",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "bc632429a034f451d265e91a966ade9d811938b3e55548c58a69fcde649c15df"
+  },
+  "id": "GjCjTKaxvuYyrIvH",
+  "tags": []
+}

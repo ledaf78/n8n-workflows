@@ -1,0 +1,2 @@
+Conditions
+{{ $json.stdout }} does not contain failed
