@@ -5,13 +5,22 @@ Repository ini berisi dokumentasi Automated-Incident-Remediation-Service-Restart
 ## Struktur Direktori
 
 ```
-n8n-workflows/
+workflow/
 ├── README.md
-├── workflows/          # Export asli (.json) dari n8n
-├── docs/                # Dokumentasi naratif tiap workflow (.md)
-├── configs/             # Detail konfigurasi tiap node (.yaml)
-├── .env.example         # Daftar environment variable yang dibutuhkan
-└── .gitignore
+│
+├── Automated-Incident-Remediation-Service-Restart/
+│   ├── configs/            # Detail konfigurasi tiap node (.yaml)
+│   ├── docs/                # Dokumentasi naratif workflow (.md)
+│   ├── workflows/           # Export asli (.json) dari n8n
+│   ├── .env.example         # Daftar environment variable yang dibutuhkan
+│   └── .gitignore
+│
+└── Server-Decommissioning/
+    ├── configs/
+    ├── docs/
+    ├── workflows/
+    ├── .env.example
+    └── .gitignore
 ```
 
 ## Cara Import Workflow ke n8n
