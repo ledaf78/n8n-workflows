@@ -1,6 +1,6 @@
 # n8n Workflows
 
-Repository ini berisi dokumentasi Automated-Incident-Remediation-Service-Restart yang digunakan untuk otomasi internal.
+Repository ini berisi dokumentasi automation n8n internal.
 
 ## Struktur Direktori
 
