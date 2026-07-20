@@ -1,0 +1,8 @@
+http request method: GET
+
+url: http://{{your-asset-repository-ip}}:8082/api/ipaddresses/?address={{ $('On form submission').first().json["IP Management Server"] }}
+
+send headers : {
+  "name": "Authorization",
+  "value": "Token {{ api-key }}"
+}

@@ -1,0 +1,25 @@
+const content = $input.first().json.choices[0].message.content;
+
+// Bersihkan SEMUA karakter markdown
+let cleaned = content
+  .replace(/\*\*/g, '')         // hapus bold **
+  .replace(/\*/g, '')           // hapus italic *
+  .replace(/#{1,6}\s/g, '')     // hapus headers
+  .replace(/\|/g, ' ')          // hapus pipe tabel
+  .replace(/`/g, '')            // hapus backtick
+  .replace(/_/g, '')            // hapus underscore
+  .replace(/\[|\]/g, '')        // hapus brackets
+  .replace(/\\n/g, '\n')        // literal \n → newline
+  .replace(/\n{3,}/g, '\n\n')   // max 2 newline berturut
+  .trim();
+
+// Potong jika terlalu panjang
+if (cleaned.length > 3500) {
+  cleaned = cleaned.substring(0, 3500) + '\n\n[pesan dipotong...]';
+}
+
+return [{
+  json: {
+    message: cleaned
+  }
+}];

@@ -1,0 +1,123 @@
+// ── Cek Approval dulu ────────────────────────
+const approved = $input.first().json?.data?.approved;
+if (approved === false) {
+  return [{ json: { 
+    status  : "declined",
+    message : "User menolak — workflow dihentikan"
+  }}];
+}
+
+// ── Ambil content dari AI Summary node ───────
+let content = null;
+try {
+  const aiData = $('AI Summary').item.json;
+  content = 
+    aiData?.choices?.[0]?.message?.content ||
+    aiData?.content                         ||
+    aiData?.output                          ||
+    null;
+} catch(e) {
+  return [{ json: { 
+    error : "Node AI Summary tidak ditemukan — cek nama node di canvas",
+    detail: e.message
+  }}];
+}
+if (!content) {
+  return [{ json: { 
+    error : "content kosong di AI Summary node"
+  }}];
+}
+
+// ── Definisi semua kemungkinan header ────────
+const backupHeaders = [
+  /\*\*[⚠️\s]*Perlu Backup[^*]*\*\*/i,
+  /\*\*[⚠️\s]*Needs Backup[^*]*\*\*/i,
+  /\*\*[⚠️\s]*Backup[^*]*\*\*/i,
+  /\*\*[⚠️\s]*Migrasi[^*]*\*\*/i,
+];
+const noActionHeaders = [
+  /\*\*[✅\s]*Tidak Perlu Aksi[^*]*\*\*/i,
+  /\*\*[✅\s]*Tidak Perlu[^*]*\*\*/i,
+  /\*\*[✅\s]*No Action[^*]*\*\*/i,
+  /\*\*[✅\s]*Aman[^*]*\*\*/i,
+];
+
+// ── Cari posisi start & end ───────────────────
+let startIndex = -1;
+let endIndex   = -1;
+for (const pattern of backupHeaders) {
+  const idx = content.search(pattern);
+  if (idx !== -1) { startIndex = idx; break; }
+}
+for (const pattern of noActionHeaders) {
+  const idx = content.search(pattern);
+  if (idx !== -1) { endIndex = idx; break; }
+}
+if (startIndex === -1) {
+  return [{ json: { 
+    error   : "Section Needs Backup tidak ditemukan",
+    preview : content.substring(0, 300)
+  }}];
+}
+
+// ── Potong hanya bagian Needs Backup ─────────
+const backupSection = content.substring(
+  startIndex,
+  endIndex !== -1 ? endIndex : content.length
+);
+
+// ── Skip words (kata yang bukan nama VM) ──────
+const skipWords = [
+  'needs backup', 'no action', 'perlu backup', 'tidak perlu',
+  'summary', 'catatan', 'rekomendasi', 'docker', 'hyper-v',
+  'software', 'risiko', 'alasan', 'item', 'detail',
+  'middleware', 'migrasi', 'backup', 'nama', 'organisasi',
+  'lokasi', 'status', 'os', 'cpu', 'ram', 'vm'
+];
+
+// ── Regex untuk validasi format hostname VM ───
+// Nama VM biasanya: huruf/angka/dash/underscore/titik, TANPA spasi
+const isLikelyVmName = (name) => {
+  if (name.length < 2 || name.length > 60) return false;
+  if (/\s/.test(name)) return false;                 // ada spasi → bukan hostname
+  if (!/[a-zA-Z]/.test(name)) return false;           // harus ada huruf
+  if (!/^[a-zA-Z0-9][a-zA-Z0-9\-_.]*$/.test(name)) return false;
+  const lower = name.toLowerCase();
+  return !skipWords.some(w => lower.includes(w));
+};
+
+// ── Ekstraksi: gabungan pattern list/tabel + fallback inline bold ──
+const patterns = [
+  /^[-*]\s+\*\*([^*|\n:]+)\*\*[:\|]/gm,
+  /^[-*]\s+\*\*([^*|\n:]+)\*\*/gm,
+  /\|\s*\*\*([^*|\n:]+)\*\*\s*\|/gm,
+  /\*\*([^*]+)\*\*/g,   // fallback: semua bold text (termasuk yang inline di kalimat)
+];
+
+const vms  = [];
+const seen = new Set();
+
+for (const pattern of patterns) {
+  let matches;
+  while ((matches = pattern.exec(backupSection)) !== null) {
+    let name = matches[1].trim()
+      .replace(/\s*\([\d\.]+\)/g, '')
+      .replace(/\s*\[[\d\.]+\]/g, '')
+      .replace(/:\s*$/, '')
+      .replace(/\*+/g, '')
+      .replace(/\|/g, '')
+      .trim();
+
+    if (isLikelyVmName(name) && !seen.has(name.toLowerCase())) {
+      seen.add(name.toLowerCase());
+      vms.push({ json: { vm_name: name } });
+    }
+  }
+}
+
+return vms.length > 0
+  ? vms
+  : [{ json: { 
+      error          : "Tidak ada VM ditemukan",
+      backup_section : backupSection.substring(0, 300)
+    }}];

@@ -1,0 +1,17 @@
+http request method: PATCH
+
+url : {{ $json.patch_url }}
+
+send headers : {
+  "name": "Authorization",
+  "value": "Token {{ api-key }}"
+}
+
+send body : {
+  "body content type": "JSON",
+  "Specify Body": "Using JSON",
+  "JSON":
+  {
+    "status": "decommissioned"
+  }
+}

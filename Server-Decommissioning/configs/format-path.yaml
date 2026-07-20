@@ -1,0 +1,19 @@
+const results = $input.first().json.results;
+
+if (!results || results.length === 0) {
+  return [{ json: { 
+    error : "Asset tidak ditemukan untuk IP tersebut",
+    ip    : $('On form submission').first().json["IP Management Server"]
+  }}];
+}
+
+const asset = results[0];
+
+return [{
+  json: {
+    asset_id   : $input.first().json.results[0].ethernet.base_object.id,
+    hostname   : asset.hostname,
+    status     : asset.status,
+    patch_url  : `http://10.70.0.56:8082/api/data-center-assets/${$input.first().json.results[0].ethernet.base_object.id}/`
+  }
+}];

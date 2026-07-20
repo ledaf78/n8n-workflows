@@ -1,0 +1,2 @@
+Command
+ssh -o StrictHostKeyChecking=no -o BatchMode=yes -i {{ $json.privateKeyPath }} {{ $json.username }}@{{ $json.host }} "/home/infra/dcim_metrics_project/scripts/remove_server_inventory_collector.sh {{ $('On form submission').first().json["IP Management Server"] }}"

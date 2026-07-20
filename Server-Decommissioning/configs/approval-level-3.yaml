@@ -1,0 +1,21 @@
+Send and wait gmail node
+
+Operation: Send and wait for response
+to: email target
+subject: Server Decommissioning Approval
+Message: {{ $json.message }}
+
+Respone Type: Approval
+  type of Approval: Approve and Disapprove
+  Approval Button Label: Approve
+  Approval Button Style: Primary
+  Dissaprove Button Label: Disapprove
+  Dissaprove Button Style: Secondary
+
+Options:
+  Limit wait time
+  {
+  "Limit time interval": "After Time Interval",
+  "Amount": "24,00" ,
+  "Units": "Hours"
+  }

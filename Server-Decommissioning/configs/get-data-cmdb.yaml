@@ -1,0 +1,19 @@
+const ip = $('On form submission').first().json["IP Management Server"];
+
+const jsonData = JSON.stringify({
+  operation     : "core/update",
+  class         : "Server",
+  key           : `SELECT Server WHERE managementip = '${ip}'`,
+  comment       : "Server decommissioned via n8n automation workflow",
+  fields        : {
+    status : "obsolete"
+  },
+  output_fields : "name,status"
+});
+
+return [{
+  json: {
+    json_data : jsonData,
+    ip        : ip
+  }
+}];
