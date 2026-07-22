@@ -1,0 +1,26 @@
+http request method: POST
+
+url: http://{{your-cmdb-ip}}webservices/rest.php
+
+send body : {
+  "body content type": "Form Urlencoded",
+  "Specify Body": "Using Fields Below",
+  "Body Parameters": [
+    {
+      "name": "version",
+      "value": "1.3"
+    },
+    {
+      "name": "auth_user",
+      "value": "admin"
+    },
+    {
+      "name": "auth_pwd",
+      "value": "password"
+    },
+    {
+      "name": "json_data",
+      "value": "{{ $json.json_data }}"
+    }
+  ]
+}

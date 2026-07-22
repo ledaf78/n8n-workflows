@@ -1,0 +1,13 @@
+Send and wait gmail node
+
+Operation: Send and wait for response
+to: email target
+subject: {{ $json.subject }}
+Message: {{ $json.body }}
+
+Respone Type: Approval
+  type of Approval: Approve and Disapprove
+  Approval Button Label: Approve
+  Approval Button Style: Primary
+  Dissaprove Button Label: Disapprove
+  Dissaprove Button Style: Secondary

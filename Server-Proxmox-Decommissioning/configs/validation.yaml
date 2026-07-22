@@ -1,0 +1,1 @@
+Conditions {{ $json.data.approved }} is equal to true

@@ -1,0 +1,1459 @@
+{
+  "name": "Server Proxmox Decommissioning Workflow",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "c9632f51-30e4-4c14-b101-5aa309073c04",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        -448,
+        1328
+      ],
+      "id": "7bc2c968-126a-4431-a04b-4b5f95576472",
+      "name": "Webhook",
+      "webhookId": "c9632f51-30e4-4c14-b101-5aa309073c04"
+    },
+    {
+      "parameters": {
+        "executeOnce": false,
+        "command": "=ssh -o StrictHostKeyChecking=no -o BatchMode=yes -i {{ $json.privateKeyPath }} {{ $json.username }}@{{ $json.host }} \"/usr/local/bin/php /home/fadel/delete-rule.php {{ $('On form submission').first().json[\"IP Management Server\"] }}\""
+      },
+      "type": "n8n-nodes-base.executeCommand",
+      "typeVersion": 1,
+      "position": [
+        2608,
+        528
+      ],
+      "id": "598437ec-c144-4c4c-a16e-72e3921e6d29",
+      "name": "Security Update",
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "executeOnce": false,
+        "command": "=ssh -o StrictHostKeyChecking=no -o BatchMode=yes -i {{ $json.privateKeyPath }} {{ $json.username }}@{{ $json.host }} \"/home/infra/dcim-automation/docker/n8n/secrets/remove_prometheus_target.sh {{ $('On form submission').first().json[\"IP Management Server\"] }}\""
+      },
+      "type": "n8n-nodes-base.executeCommand",
+      "typeVersion": 1,
+      "position": [
+        3200,
+        496
+      ],
+      "id": "04828bf9-16d5-4cf9-a293-866d3d8f1e5c",
+      "name": "Monitoring Update",
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "chatId": "1379025645",
+        "text": "={{ $json.stdout || $json.stderr || $json.error }}",
+        "additionalFields": {}
+      },
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        3184,
+        672
+      ],
+      "id": "4ab635e5-71a9-46e6-b223-af9bfaaa9ee0",
+      "name": "Send a text message",
+      "webhookId": "039bdaf7-87f1-4665-bef5-253fd21fa0d2",
+      "credentials": {
+        "telegramApi": {
+          "id": "jvLxw0sF4bgtLkOG",
+          "name": "Bot Fadel Telegram account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://10.70.0.56:8080/webservices/rest.php",
+        "sendBody": true,
+        "contentType": "form-urlencoded",
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "version",
+              "value": "1.3"
+            },
+            {
+              "name": "auth_user",
+              "value": "admin"
+            },
+            {
+              "name": "auth_pwd",
+              "value": "Inovasi@0918"
+            },
+            {
+              "name": "json_data",
+              "value": "={\n  \"operation\": \"core/get\",\n  \"class\": \"Server\",\n  \"key\": \"SELECT Server WHERE managementip = '{{ $json[\"IP Management Server\"] }}'\",\n  \"output_fields\": \"*\"\n}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [
+        -752,
+        112
+      ],
+      "id": "d94ea5c6-6c3c-4426-aaae-85e02acc5b0c",
+      "name": "Get Spec Server"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://10.70.0.56:8080/webservices/rest.php",
+        "sendBody": true,
+        "contentType": "form-urlencoded",
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "version",
+              "value": "1.3"
+            },
+            {
+              "name": "auth_user",
+              "value": "admin"
+            },
+            {
+              "name": "auth_pwd",
+              "value": "Inovasi@0918"
+            },
+            {
+              "name": "json_data",
+              "value": "={\n  \"operation\": \"core/get\",\n  \"class\": \"VirtualMachine\",\n  \"key\": \"SELECT VirtualMachine AS VM JOIN Hypervisor AS HV ON VM.virtualhost_id = HV.id JOIN Server AS S ON HV.server_id = S.id WHERE S.managementip = '{{ $('On form submission').item.json[\"IP Management Server\"] }}'\",\n  \"output_fields\": \"*\"\n}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [
+        -544,
+        112
+      ],
+      "id": "5f71d8e0-838a-4122-9ee5-212067d34604",
+      "name": "Get VM"
+    },
+    {
+      "parameters": {
+        "jsCode": "for (const item of $input.all()) {\n  try {\n    // Memeriksa apakah ada data di dalam stdout\n    if (item.json.stdout) {\n      \n      // Mem-parse string JSON dari stdout menjadi objek sungguhan\n      const parsedData = JSON.parse(item.json.stdout);\n\n      // Memindahkan semua kunci dan nilai ke tingkat teratas (root) item.json\n      Object.assign(item.json, parsedData);\n\n      // Membersihkan properti lama agar output n8n terlihat lebih rapi (Opsional)\n      delete item.json.stdout;\n      delete item.json.stderr;\n      delete item.json.exitCode;\n    }\n  } catch (error) {\n    // Jika output gagal diparse, tangkap errornya agar workflow tidak crash\n    item.json.error = \"Gagal mem-parse JSON: \" + error.message;\n  }\n}\n\nreturn $input.all();"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1536,
+        64
+      ],
+      "id": "22c6f3ef-1b2d-4e8e-9a78-2a280b1524fb",
+      "name": "Data Ingestion Parse Script"
+    },
+    {
+      "parameters": {
+        "executeOnce": false,
+        "command": "=ssh -o StrictHostKeyChecking=no -o BatchMode=yes -i {{ $json.privateKeyPath }} {{ $json.username }}@{{ $json.host }} \"/home/infra/dcim_metrics_project/scripts/remove_server_inventory_collector.sh {{ $('On form submission').first().json[\"IP Management Server\"] }}\""
+      },
+      "type": "n8n-nodes-base.executeCommand",
+      "typeVersion": 1,
+      "position": [
+        1760,
+        64
+      ],
+      "id": "abdef765-3b25-4cea-8cba-e9ea9f79af64",
+      "name": "Data Ingestion Update",
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "modelId": {
+          "__rl": true,
+          "value": "ministral-3:8b",
+          "mode": "list",
+          "cachedResultName": "ministral-3:8b"
+        },
+        "messages": {
+          "values": [
+            {
+              "content": "You are an IT Infrastructure Decommission Analyst\n\nYour only job: analyze iTop CMDB data for a server/hypervisor being decommissioned, and identify exactly which applications/services need backup or migration before shutdown.\n\n## RULES\n- Respond in the same language the user uses\n- Never fabricate data — only use what's in the provided JSON\n- For each VM, check applicationsolution_list, services_list, and softwares_list\n- Flag as NEEDS BACKUP/MIGRATION if the VM runs: database, mail server, web app, container registry, version control (GitLab/Git), DNS, or any service holding persistent data\n- VMs with empty applicationsolution_list, services_list, and softwares_list, or marked \"obsolete\" → no action needed\n- Always name the specific VM and specific software/app — never use vague language\n\n## OUTPUT FORMAT\n\n**[Server Name] — Decommission Impact**\n\n**Needs Backup/Migration:**\n- VM-NAME: [app/software running] — [what data is at risk]\n\n**No Action Needed:**\n- VM-NAME: [reason — no app/already obsolete]\n\n**Summary:** X VM perlu backup/migrasi, Y VM aman langsung dimatikan.",
+              "role": "assistant"
+            },
+            {
+              "content": "={{ JSON.stringify($('Get Spec Server').item.json) }}"
+            },
+            {
+              "content": "={{ JSON.stringify($json) }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.ollama",
+      "typeVersion": 1,
+      "position": [
+        -32,
+        1328
+      ],
+      "id": "5b73279d-b78d-4441-a102-ee23717fca6b",
+      "name": "Analyze CMDB",
+      "credentials": {
+        "ollamaApi": {
+          "id": "M2Z24XAYVeETrBII",
+          "name": "Test"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "formTitle": "Server Decommission Request",
+        "formDescription": "A Server Decommissioning Request is an official IT workflow to securely retire outdated physical or virtual servers. It ensures business continuity, compliance with data disposal regulations, and the secure cleanup of network and software resources before equipment disposal or recycling.",
+        "formFields": {
+          "values": [
+            {
+              "fieldLabel": "Pengaju"
+            },
+            {
+              "fieldLabel": "Nama Server",
+              "requiredField": true
+            },
+            {
+              "fieldLabel": "IP Management Server",
+              "requiredField": true
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.formTrigger",
+      "typeVersion": 2.3,
+      "position": [
+        -960,
+        112
+      ],
+      "id": "4c60ec61-731a-404c-a875-fb88d9f0dc77",
+      "name": "On form submission",
+      "webhookId": "67457c26-5121-4dbb-8de2-e4e59b823500"
+    },
+    {
+      "parameters": {
+        "executeOnce": false,
+        "command": "=/home/node/secrets/get-key.sh 10.70.0.56"
+      },
+      "type": "n8n-nodes-base.executeCommand",
+      "typeVersion": 1,
+      "position": [
+        1296,
+        80
+      ],
+      "id": "1339c38e-a925-4d8e-91de-73458c99b3af",
+      "name": "Get Private Key Data Ingestion",
+      "notesInFlow": false,
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "executeOnce": false,
+        "command": "=ssh -o StrictHostKeyChecking=no -o BatchMode=yes -i {{ $('Data Ingestion Parse Script').item.json.privateKeyPath }} {{ $('Data Ingestion Parse Script').item.json.username }}@{{ $('Data Ingestion Parse Script').item.json.host }} \"/home/infra/dcim_metrics_project/scripts/remove_redfish_poller.sh {{ $('On form submission').first().json[\"IP Management Server\"] }}\""
+      },
+      "type": "n8n-nodes-base.executeCommand",
+      "typeVersion": 1,
+      "position": [
+        1968,
+        48
+      ],
+      "id": "5a08d6cb-440d-4fd3-8ed6-d8094a9999f9",
+      "name": "Data Ingestion Update1",
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "jsCode": "// ── Cek Approval dulu ────────────────────────\nconst approved = $input.first().json?.data?.approved;\nif (approved === false) {\n  return [{ json: { \n    status  : \"declined\",\n    message : \"User menolak — workflow dihentikan\"\n  }}];\n}\n\n// ── Ambil content dari AI Summary node ───────\nlet content = null;\ntry {\n  const aiData = $('AI Summary').item.json;\n  content = \n    aiData?.choices?.[0]?.message?.content ||\n    aiData?.content                         ||\n    aiData?.output                          ||\n    null;\n} catch(e) {\n  return [{ json: { \n    error : \"Node AI Summary tidak ditemukan — cek nama node di canvas\",\n    detail: e.message\n  }}];\n}\nif (!content) {\n  return [{ json: { \n    error : \"content kosong di AI Summary node\"\n  }}];\n}\n\n// ── Definisi semua kemungkinan header ────────\nconst backupHeaders = [\n  /\\*\\*[⚠️\\s]*Perlu Backup[^*]*\\*\\*/i,\n  /\\*\\*[⚠️\\s]*Needs Backup[^*]*\\*\\*/i,\n  /\\*\\*[⚠️\\s]*Backup[^*]*\\*\\*/i,\n  /\\*\\*[⚠️\\s]*Migrasi[^*]*\\*\\*/i,\n];\nconst noActionHeaders = [\n  /\\*\\*[✅\\s]*Tidak Perlu Aksi[^*]*\\*\\*/i,\n  /\\*\\*[✅\\s]*Tidak Perlu[^*]*\\*\\*/i,\n  /\\*\\*[✅\\s]*No Action[^*]*\\*\\*/i,\n  /\\*\\*[✅\\s]*Aman[^*]*\\*\\*/i,\n];\n\n// ── Cari posisi start & end ───────────────────\nlet startIndex = -1;\nlet endIndex   = -1;\nfor (const pattern of backupHeaders) {\n  const idx = content.search(pattern);\n  if (idx !== -1) { startIndex = idx; break; }\n}\nfor (const pattern of noActionHeaders) {\n  const idx = content.search(pattern);\n  if (idx !== -1) { endIndex = idx; break; }\n}\nif (startIndex === -1) {\n  return [{ json: { \n    error   : \"Section Needs Backup tidak ditemukan\",\n    preview : content.substring(0, 300)\n  }}];\n}\n\n// ── Potong hanya bagian Needs Backup ─────────\nconst backupSection = content.substring(\n  startIndex,\n  endIndex !== -1 ? endIndex : content.length\n);\n\n// ── Skip words (kata yang bukan nama VM) ──────\nconst skipWords = [\n  'needs backup', 'no action', 'perlu backup', 'tidak perlu',\n  'summary', 'catatan', 'rekomendasi', 'docker', 'hyper-v',\n  'software', 'risiko', 'alasan', 'item', 'detail',\n  'middleware', 'migrasi', 'backup', 'nama', 'organisasi',\n  'lokasi', 'status', 'os', 'cpu', 'ram', 'vm'\n];\n\n// ── Regex untuk validasi format hostname VM ───\n// Nama VM biasanya: huruf/angka/dash/underscore/titik, TANPA spasi\nconst isLikelyVmName = (name) => {\n  if (name.length < 2 || name.length > 60) return false;\n  if (/\\s/.test(name)) return false;                 // ada spasi → bukan hostname\n  if (!/[a-zA-Z]/.test(name)) return false;           // harus ada huruf\n  if (!/^[a-zA-Z0-9][a-zA-Z0-9\\-_.]*$/.test(name)) return false;\n  const lower = name.toLowerCase();\n  return !skipWords.some(w => lower.includes(w));\n};\n\n// ── Ekstraksi: gabungan pattern list/tabel + fallback inline bold ──\nconst patterns = [\n  /^[-*]\\s+\\*\\*([^*|\\n:]+)\\*\\*[:\\|]/gm,\n  /^[-*]\\s+\\*\\*([^*|\\n:]+)\\*\\*/gm,\n  /\\|\\s*\\*\\*([^*|\\n:]+)\\*\\*\\s*\\|/gm,\n  /\\*\\*([^*]+)\\*\\*/g,   // fallback: semua bold text (termasuk yang inline di kalimat)\n];\n\nconst vms  = [];\nconst seen = new Set();\n\nfor (const pattern of patterns) {\n  let matches;\n  while ((matches = pattern.exec(backupSection)) !== null) {\n    let name = matches[1].trim()\n      .replace(/\\s*\\([\\d\\.]+\\)/g, '')\n      .replace(/\\s*\\[[\\d\\.]+\\]/g, '')\n      .replace(/:\\s*$/, '')\n      .replace(/\\*+/g, '')\n      .replace(/\\|/g, '')\n      .trim();\n\n    if (isLikelyVmName(name) && !seen.has(name.toLowerCase())) {\n      seen.add(name.toLowerCase());\n      vms.push({ json: { vm_name: name } });\n    }\n  }\n}\n\nreturn vms.length > 0\n  ? vms\n  : [{ json: { \n      error          : \"Tidak ada VM ditemukan\",\n      backup_section : backupSection.substring(0, 300)\n    }}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        416,
+        96
+      ],
+      "id": "5fa761bf-c930-4bf0-afae-75c6c0e4f65f",
+      "name": "Format Get VM"
+    },
+    {
+      "parameters": {
+        "executeOnce": false,
+        "command": "=ssh -o StrictHostKeyChecking=no -o BatchMode=yes -i {{ $json.privateKeyPath }} {{ $json.username }}@{{ $json.host }} \"/usr/local/scripts/backup-vm.sh {{ $('Format Get VM').item.json.vm_name }}\""
+      },
+      "type": "n8n-nodes-base.executeCommand",
+      "typeVersion": 1,
+      "position": [
+        1392,
+        480
+      ],
+      "id": "02ec432b-9e08-41fe-854b-50fc02dd7132",
+      "name": "Backup Command",
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 3,
+      "position": [
+        624,
+        96
+      ],
+      "id": "4f20570f-13ac-42dc-982d-e0b17abbdf83",
+      "name": "Loop Over Items"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://192.168.100.35:20128//v1/chat/completions",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "Bearer sk-16555d4c2c0dd23e-f89khy-7aa49c09"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{\n{\n  model: \"ollama/minimax-m3:cloud\",\n  messages: [\n    {\n      role: \"system\",\n      content: `You are an IT Infrastructure Decommission Analyst\n\nYour only job: analyze iTop CMDB data for a server/hypervisor being decommissioned, and identify exactly which applications/services need backup or migration before shutdown.\n\n## RULES\n- Respond in the same language the user uses\n- Never fabricate data — only use what's in the provided JSON\n- For each VM, check applicationsolution_list, services_list, and softwares_list\n- Flag as NEEDS BACKUP/MIGRATION if the VM runs: database, mail server, web app, container registry, version control (GitLab/Git), DNS, or any service holding persistent data\n- VMs with empty applicationsolution_list, services_list, and softwares_list, or marked \"obsolete\" → no action needed\n- Always name the specific VM and specific software/app — never use vague language\n\n## OUTPUT FORMAT\n\n**[Server Name] — Decommission Impact**\n\n**Needs Backup/Migration:**\n- VM-NAME: [app/software running] — [what data is at risk]\n\n**No Action Needed:**\n- VM-NAME: [reason — no app/already obsolete]\n\n**Summary:** X VM perlu backup/migrasi, Y VM aman langsung dimatikan.\n`\n    },\n    {\n      role: \"user\",\n      content:\n        \"Server Information:\\n\" +\n        JSON.stringify($('Get Spec Server').item.json, null, 2) +\n        \"\\n\\nVM CMDB Data:\\n\" +\n        JSON.stringify($json, null, 2)\n    }\n  ],\n  options: {\n    temperature: 0,\n    top_p: 0.9\n  },\n  stream: false\n}\n}}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [
+        -224,
+        1328
+      ],
+      "id": "ebb8f1a4-24c7-4316-90a9-dacd80fad880",
+      "name": "AI Agent"
+    },
+    {
+      "parameters": {
+        "jsCode": "const content = $input.first().json.choices[0].message.content;\n\n// Bersihkan SEMUA karakter markdown\nlet cleaned = content\n  .replace(/\\*\\*/g, '')         // hapus bold **\n  .replace(/\\*/g, '')           // hapus italic *\n  .replace(/#{1,6}\\s/g, '')     // hapus headers\n  .replace(/\\|/g, ' ')          // hapus pipe tabel\n  .replace(/`/g, '')            // hapus backtick\n  .replace(/_/g, '')            // hapus underscore\n  .replace(/\\[|\\]/g, '')        // hapus brackets\n  .replace(/\\\\n/g, '\\n')        // literal \\n → newline\n  .replace(/\\n{3,}/g, '\\n\\n')   // max 2 newline berturut\n  .trim();\n\n// Potong jika terlalu panjang\nif (cleaned.length > 3500) {\n  cleaned = cleaned.substring(0, 3500) + '\\n\\n[pesan dipotong...]';\n}\n\nreturn [{\n  json: {\n    message: cleaned\n  }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -176,
+        112
+      ],
+      "id": "e095aef4-6227-4c6c-9cd6-cb7065275a86",
+      "name": "Format Data AI"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "675e5921-c626-442e-ac05-d94da7f46331",
+              "leftValue": "={{ $json.data.approved }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        176,
+        112
+      ],
+      "id": "def417e1-2cda-4d9f-9eae-f80f258615c0",
+      "name": "Validation"
+    },
+    {
+      "parameters": {
+        "chatId": "1379025645",
+        "text": "={{ $json.stdout || $json.stderr || $json.error }}",
+        "additionalFields": {}
+      },
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        1904,
+        784
+      ],
+      "id": "c63374ec-68c1-4453-97bc-617bc60af6de",
+      "name": "Send a text message1",
+      "webhookId": "0529eb8e-5ee2-4d9f-8c41-8497a9c73ca9",
+      "credentials": {
+        "telegramApi": {
+          "id": "jvLxw0sF4bgtLkOG",
+          "name": "Bot Fadel Telegram account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "content": "# Backup Step Hyper-V Environment\n## - Script melakukan backup VM Secara otomatis berdasarkan IP Management",
+        "height": 384,
+        "width": 736
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        832,
+        320
+      ],
+      "typeVersion": 1,
+      "id": "7bd026b5-173e-4ba2-a85d-fc9c98824525",
+      "name": "Sticky Note"
+    },
+    {
+      "parameters": {
+        "content": "# Remove Data Collection\n## - Menghapus data collection melalui parameter IP management di dalam scripts",
+        "height": 336,
+        "width": 896
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        1248,
+        -96
+      ],
+      "typeVersion": 1,
+      "id": "08a83207-cf6c-49ca-9889-232101fb15b5",
+      "name": "Sticky Note1"
+    },
+    {
+      "parameters": {
+        "content": "# Remove Security and Monitoring\n## - Update konfigurasi server yang terdaftar di security dan monitoring service",
+        "height": 464,
+        "width": 1184
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        2224,
+        368
+      ],
+      "typeVersion": 1,
+      "id": "594d5f34-16a0-48bc-a132-39642ab13267",
+      "name": "Sticky Note2"
+    },
+    {
+      "parameters": {
+        "operation": "sendAndWait",
+        "sendTo": "falahinfra123@gmail.com",
+        "subject": "Server Decommissioning Approval",
+        "message": "={{ $json.message }}",
+        "approvalOptions": {
+          "values": {
+            "approvalType": "double",
+            "disapproveLabel": "Not Approve"
+          }
+        },
+        "options": {
+          "appendAttribution": false
+        }
+      },
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.1,
+      "position": [
+        0,
+        112
+      ],
+      "id": "5224b87a-6a99-4dc2-8760-a2a0f29c7b91",
+      "name": "Approval Level 1 - Team Lead",
+      "webhookId": "0fa79c06-9c48-48e2-b92d-c130bcf5603c",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "Iw2mjh8F4zEW79w1",
+          "name": "Fadel Gmail"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "675e5921-c626-442e-ac05-d94da7f46331",
+              "leftValue": "={{ $json.data.approved }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        176,
+        336
+      ],
+      "id": "2fea49c1-5fca-40b6-848b-27fcb728b9af",
+      "name": "Validation1"
+    },
+    {
+      "parameters": {
+        "operation": "sendAndWait",
+        "sendTo": "fadelliz78@gmail.com",
+        "subject": "Server Decommissioning Approval",
+        "message": "={{ $json.message }}",
+        "approvalOptions": {
+          "values": {
+            "approvalType": "double",
+            "disapproveLabel": "Not Approve"
+          }
+        },
+        "options": {
+          "limitWaitTime": {
+            "values": {
+              "resumeAmount": 4
+            }
+          },
+          "appendAttribution": false
+        }
+      },
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.1,
+      "position": [
+        0,
+        336
+      ],
+      "id": "11de71df-8864-425f-8d73-243562c47648",
+      "name": "Approval Level 2 - Manager",
+      "webhookId": "a0248862-52da-4d11-9bf7-e98af2a18ba0",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "Iw2mjh8F4zEW79w1",
+          "name": "Fadel Gmail"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "675e5921-c626-442e-ac05-d94da7f46331",
+              "leftValue": "={{ $json.data.approved }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        176,
+        544
+      ],
+      "id": "e90b5ecb-9a80-47f4-8ec7-1a651ceabf6f",
+      "name": "Validation2"
+    },
+    {
+      "parameters": {
+        "operation": "sendAndWait",
+        "sendTo": "fadelliz78@gmail.com",
+        "subject": "Server Decommissioning Approval",
+        "message": "={{ $json.message }}",
+        "approvalOptions": {
+          "values": {
+            "approvalType": "double",
+            "disapproveLabel": "Not Approve"
+          }
+        },
+        "options": {
+          "limitWaitTime": {
+            "values": {
+              "resumeAmount": 24
+            }
+          },
+          "appendAttribution": false
+        }
+      },
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.1,
+      "position": [
+        0,
+        544
+      ],
+      "id": "93d3dc6b-7bd1-41d5-bd33-e8b7ef7183ad",
+      "name": "Approval Level 3 - Director",
+      "webhookId": "5c8a08c5-8a4a-4d61-9945-ef2e0426b158",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "Iw2mjh8F4zEW79w1",
+          "name": "Fadel Gmail"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.xiaomimimo.com/v1/chat/completions",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "Bearer sk-sb4s5nhd3iyxpthsocv7accxlpkdc07tar7rpox5l15134o2"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{\n{\n  model: \"mimo-v2.5-pro\",\n  messages: [\n    {\n      role: \"system\",\n      content: `You are an IT Infrastructure Decommission Analyst\n\nYour only job: analyze iTop CMDB data for a server/hypervisor being decommissioned, and identify exactly which applications/services need backup or migration before shutdown.\n\n## RULES\n- Respond in the same language the user uses\n- Never fabricate data — only use what's in the provided JSON\n- For Server, check name, organization_name, business_criticity, contact_name, location_name, rack_name, managementip, osfamily_name, osversion_name, cpu, ram, logicalvolumes_list\n- For each VM, check applicationsolution_list, services_list, and softwares_list\n- Flag as NEEDS BACKUP/MIGRATION if the VM runs: database, mail server, web app, container registry, version control (GitLab/Git), DNS, or any service holding persistent data\n- VMs with empty applicationsolution_list, services_list, and softwares_list, or marked \"obsolete\" → no action needed\n- Always name the specific VM and specific software/app — never use vague language\n\n## OUTPUT FORMAT\n\n**[Server Name] — Decommission Impact**\n\n**Needs Backup/Migration:**\n- VM-NAME: [app/software running] — [what data is at risk]\n\n**No Action Needed:**\n- VM-NAME: [reason — no app/already obsolete]\n\n**Summary:** X VM perlu backup/migrasi, Y VM aman langsung dimatikan.\n\nATURAN:\n- SELALU gunakan format list (- **VM-NAME**), JANGAN gunakan tabel\n- Nama VM harus EXACT sama dengan nama di CMDB\n- Jangan tambahkan IP di dalam nama VM\n`\n    },\n    {\n      role: \"user\",\n      content:\n        \"Server Information:\\n\" +\n        JSON.stringify($('Get Spec Server').item.json, null, 2) +\n        \"\\n\\nVM CMDB Data:\\n\" +\n        JSON.stringify($json, null, 2)\n    }\n  ],\n  options: {\n    temperature: 0,\n    top_p: 0.9\n  },\n  stream: false\n}\n}}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [
+        -336,
+        112
+      ],
+      "id": "514e5a82-9c81-4907-8e57-689136d9ff86",
+      "name": "AI Summary"
+    },
+    {
+      "parameters": {
+        "operation": "sendAndWait",
+        "sendTo": "falahinfra123@gmail.com",
+        "subject": "={{ $json.subject }}",
+        "message": "={{ $json.body }}",
+        "approvalOptions": {
+          "values": {
+            "approvalType": "double",
+            "disapproveLabel": "Not Approve"
+          }
+        },
+        "options": {
+          "appendAttribution": false
+        }
+      },
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.1,
+      "position": [
+        1040,
+        80
+      ],
+      "id": "0daad854-64b1-48e7-815b-9d8325c30902",
+      "name": "Confirm Backup Done",
+      "webhookId": "03b8f9fd-9767-457b-9a6d-33332ba6bc13",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "Iw2mjh8F4zEW79w1",
+          "name": "Fadel Gmail"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Ambil semua VM dari Format Get VM (bukan dari loop)\nconst vmItems = $('Format Get VM').all();\n\n// Kumpulkan semua nama VM\nconst vmList = vmItems.map((item, index) => {\n  const vmName = item.json.vm_name || 'Unknown';\n  return `${index + 1}. ✅ ${vmName} — Backup Completed`;\n}).join('\\n');\n\n// Ambil info server dari On form submission\nconst formData    = $('On form submission').item.json;\nconst serverName  = formData['Nama Server']  \n                 || formData['Server Name']  \n                 || 'Unknown Server';\nconst requestedBy = formData['Pengaju'] \n                 || 'Unknown';\n\nconst timestamp = new Date().toLocaleString('id-ID', {\n  timeZone : 'Asia/Jakarta',\n  day      : '2-digit',\n  month    : 'long',\n  year     : 'numeric',\n  hour     : '2-digit',\n  minute   : '2-digit',\n  second   : '2-digit'\n});\n\nconst subject = `✅ Backup VM Selesai — ${serverName} [${timestamp}]`;\n\nconst body = `\n<!DOCTYPE html>\n<html>\n<body style=\"font-family: Arial, sans-serif; color: #333; max-width: 600px; margin: 0 auto;\">\n\n  <div style=\"background: #1a73e8; padding: 20px; border-radius: 8px 8px 0 0;\">\n    <h2 style=\"color: white; margin: 0;\">✅ Backup VM Selesai</h2>\n    <p style=\"color: #e8f0fe; margin: 5px 0 0 0;\">Decommission Workflow Notification</p>\n  </div>\n\n  <div style=\"background: #f8f9fa; padding: 20px; border: 1px solid #dadce0;\">\n\n    <table style=\"width: 100%; border-collapse: collapse;\">\n      <tr>\n        <td style=\"padding: 8px; font-weight: bold; width: 40%; color: #555;\">Server</td>\n        <td style=\"padding: 8px;\">${serverName}</td>\n      </tr>\n      <tr style=\"background: #fff;\">\n        <td style=\"padding: 8px; font-weight: bold; color: #555;\">Requested By</td>\n        <td style=\"padding: 8px;\">${requestedBy}</td>\n      </tr>\n      <tr>\n        <td style=\"padding: 8px; font-weight: bold; color: #555;\">Waktu Backup</td>\n        <td style=\"padding: 8px;\">${timestamp}</td>\n      </tr>\n      <tr style=\"background: #fff;\">\n        <td style=\"padding: 8px; font-weight: bold; color: #555;\">Total VM</td>\n        <td style=\"padding: 8px;\">${vmItems.length} VM</td>\n      </tr>\n    </table>\n\n    <div style=\"margin-top: 20px;\">\n      <h3 style=\"color: #1a73e8; border-bottom: 2px solid #1a73e8; padding-bottom: 8px;\">\n        📋 Detail VM yang Dibackup\n      </h3>\n      <div style=\"background: #fff; border: 1px solid #dadce0; border-radius: 4px; padding: 15px;\">\n        <pre style=\"margin: 0; font-family: monospace; font-size: 14px;\">${vmList}</pre>\n      </div>\n    </div>\n\n    <div style=\"margin-top: 20px; background: #e8f5e9; border-left: 4px solid #34a853; padding: 12px;\">\n      <p style=\"margin: 0; color: #2e7d32;\">\n        <strong>✅ Semua VM berhasil dibackup.</strong><br>\n        Silakan lakukan Migrasi hasil backup VM berada di server <strong>${serverName}</strong>. saat ini ke tempat yang sudah di tentukan. \n      </p>\n    </div>\n\n  </div>\n\n  <div style=\"background: #f1f3f4; padding: 12px; border-radius: 0 0 8px 8px; text-align: center;\">\n    <p style=\"margin: 0; font-size: 12px; color: #888;\">\n      Email ini dikirim otomatis oleh n8n Decommission Workflow<br>\n      ${timestamp} WIB\n    </p>\n  </div>\n\n</body>\n</html>\n`.trim();\n\nreturn [{\n  json: {\n    subject,\n    body,\n    to          : requestedBy,\n    server_name : serverName,\n    total_vm    : vmItems.length,\n    vm_list     : vmList,\n    timestamp\n  }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        816,
+        80
+      ],
+      "id": "b9ae59c8-3191-4c45-b6ea-ed99b0bbe6db",
+      "name": "Format Email"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://10.70.0.56:8080/webservices/rest.php",
+        "sendBody": true,
+        "contentType": "form-urlencoded",
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "version",
+              "value": "1.3"
+            },
+            {
+              "name": "auth_user",
+              "value": "admin"
+            },
+            {
+              "name": "auth_pwd",
+              "value": "Inovasi@0918"
+            },
+            {
+              "name": "json_data",
+              "value": "={{ $json.json_data }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [
+        2448,
+        32
+      ],
+      "id": "eab015fb-b78a-4767-953e-89342428def9",
+      "name": "Update Status CMDB"
+    },
+    {
+      "parameters": {
+        "content": "# Update status CMDB and Asset Repository\n## - Update status server decom setelah dilakukan backup menjadi inactive server",
+        "height": 304,
+        "width": 1184
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        2192,
+        -112
+      ],
+      "typeVersion": 1,
+      "id": "6269157b-f0dd-4978-bb96-8a43c54967f9",
+      "name": "Sticky Note3"
+    },
+    {
+      "parameters": {
+        "url": "=http://10.70.0.56:8082/api/ipaddresses/?address={{ $('On form submission').first().json[\"IP Management Server\"] }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "Token 1cd05b8d36e258399a52c59f1a4016addb2346a3"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [
+        2672,
+        32
+      ],
+      "id": "ea500b15-9d5e-4318-a3d4-c8ad64ee54d1",
+      "name": "Get Asset Repository"
+    },
+    {
+      "parameters": {
+        "method": "PATCH",
+        "url": "={{ $json.patch_url }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "Token 1cd05b8d36e258399a52c59f1a4016addb2346a3"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "{\n  \"status\": \"decommissioned\"\n}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [
+        3136,
+        32
+      ],
+      "id": "f4ab690c-ac59-4fd9-834d-ba78ab33d170",
+      "name": "Asset Repository Update"
+    },
+    {
+      "parameters": {
+        "jsCode": "const results = $input.first().json.results;\n\nif (!results || results.length === 0) {\n  return [{ json: { \n    error : \"Asset tidak ditemukan untuk IP tersebut\",\n    ip    : $('On form submission').first().json[\"IP Management Server\"]\n  }}];\n}\n\nconst asset = results[0];\n\nreturn [{\n  json: {\n    asset_id   : $input.first().json.results[0].ethernet.base_object.id,\n    hostname   : asset.hostname,\n    status     : asset.status,\n    patch_url  : `http://10.70.0.56:8082/api/data-center-assets/${$input.first().json.results[0].ethernet.base_object.id}/`\n  }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2896,
+        32
+      ],
+      "id": "a07fb7df-6fda-42fc-a8c6-33d5f9e49eb9",
+      "name": "Format Path"
+    },
+    {
+      "parameters": {
+        "jsCode": "const ip = $('On form submission').first().json[\"IP Management Server\"];\n\nconst jsonData = JSON.stringify({\n  operation     : \"core/update\",\n  class         : \"Server\",\n  key           : `SELECT Server WHERE managementip = '${ip}'`,\n  comment       : \"Server decommissioned via n8n automation workflow\",\n  fields        : {\n    status : \"obsolete\"\n  },\n  output_fields : \"name,status\"\n});\n\nreturn [{\n  json: {\n    json_data : jsonData,\n    ip        : ip\n  }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2272,
+        32
+      ],
+      "id": "efc23d3a-fd2b-41b8-8ce7-d8c8f1ca9f76",
+      "name": "Get Data CMDB"
+    },
+    {
+      "parameters": {
+        "sendTo": "falahinfra123@gmail.com",
+        "subject": "={{ $json.subject }}",
+        "message": "={{ $json.body }}",
+        "options": {
+          "appendAttribution": false
+        }
+      },
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.1,
+      "position": [
+        704,
+        784
+      ],
+      "id": "141b6851-f375-4eb7-acc0-27e497b44c3c",
+      "name": "Send Dissapprove",
+      "webhookId": "5ac7cb43-7918-49df-9f47-ceaa91539e37",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "Iw2mjh8F4zEW79w1",
+          "name": "Fadel Gmail"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "content": "# First Step\n## - Mengambil Data spesifikasi Server, List VM, Stack Holder dan Penanggung jawab berdasarkan data di CMDB",
+        "height": 320,
+        "width": 976
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        -1024,
+        -32
+      ],
+      "typeVersion": 1,
+      "id": "7869885f-84bb-4b31-8f7b-8013724adb61",
+      "name": "Sticky Note4"
+    },
+    {
+      "parameters": {
+        "executeOnce": false,
+        "command": "=/home/node/secrets/get-key.sh {{ $('On form submission').item.json[\"IP Management Server\"] }}"
+      },
+      "type": "n8n-nodes-base.executeCommand",
+      "typeVersion": 1,
+      "position": [
+        880,
+        496
+      ],
+      "id": "29ba93b4-2d4e-41b9-9122-0d2b6ca6c079",
+      "name": "Get Private Backup",
+      "notesInFlow": false,
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "jsCode": "for (const item of $input.all()) {\n  try {\n    // Memeriksa apakah ada data di dalam stdout\n    if (item.json.stdout) {\n      \n      // Mem-parse string JSON dari stdout menjadi objek sungguhan\n      const parsedData = JSON.parse(item.json.stdout);\n\n      // Memindahkan semua kunci dan nilai ke tingkat teratas (root) item.json\n      Object.assign(item.json, parsedData);\n\n      // Membersihkan properti lama agar output n8n terlihat lebih rapi (Opsional)\n      delete item.json.stdout;\n      delete item.json.stderr;\n      delete item.json.exitCode;\n    }\n  } catch (error) {\n    // Jika output gagal diparse, tangkap errornya agar workflow tidak crash\n    item.json.error = \"Gagal mem-parse JSON: \" + error.message;\n  }\n}\n\nreturn $input.all();"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1168,
+        480
+      ],
+      "id": "8f4cea3f-8700-4b5f-a38e-1f5531485761",
+      "name": "Parse Private Key Backup"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Ambil data form pengajuan decommission\nconst formData    = $('On form submission').item.json;\nconst serverName  = formData['Nama Server']  \n                 || formData['Server Name']  \n                 || 'Unknown Server';\nconst requestedBy = formData['Email']        \n                 || formData['Pengaju'] \n                 || 'Unknown';\n\nconst timestamp = new Date().toLocaleString('id-ID', {\n  timeZone : 'Asia/Jakarta',\n  day      : '2-digit',\n  month    : 'long',\n  year     : 'numeric',\n  hour     : '2-digit',\n  minute   : '2-digit',\n  second   : '2-digit'\n});\n\nconst subject = `❌ Decommission Ditolak — ${serverName} [${timestamp}]`;\n\nconst body = `\n<!DOCTYPE html>\n<html>\n<body style=\"font-family: Arial, sans-serif; color: #333; max-width: 600px; margin: 0 auto;\">\n  <div style=\"background: #d93025; padding: 20px; border-radius: 8px 8px 0 0;\">\n    <h2 style=\"color: white; margin: 0;\">❌ Decommission Ditolak</h2>\n    <p style=\"color: #fce8e6; margin: 5px 0 0 0;\">Decommission Workflow Notification</p>\n  </div>\n  <div style=\"background: #f8f9fa; padding: 20px; border: 1px solid #dadce0;\">\n    <table style=\"width: 100%; border-collapse: collapse;\">\n      <tr>\n        <td style=\"padding: 8px; font-weight: bold; width: 40%; color: #555;\">Server</td>\n        <td style=\"padding: 8px;\">${serverName}</td>\n      </tr>\n      <tr style=\"background: #fff;\">\n        <td style=\"padding: 8px; font-weight: bold; color: #555;\">Requested By</td>\n        <td style=\"padding: 8px;\">${requestedBy}</td>\n      </tr>\n      <tr>\n        <td style=\"padding: 8px; font-weight: bold; color: #555;\">Waktu Keputusan</td>\n        <td style=\"padding: 8px;\">${timestamp}</td>\n      </tr>\n    </table>\n\n    <div style=\"margin-top: 20px; background: #fce8e6; border-left: 4px solid #d93025; padding: 12px;\">\n      <p style=\"margin: 0; color: #a50e0e;\">\n        <strong>❌ Permintaan decommission server <u>${serverName}</u> tidak disetujui.</strong>\n      </p>\n    </div>\n  </div>\n  <div style=\"background: #f1f3f4; padding: 12px; border-radius: 0 0 8px 8px; text-align: center;\">\n    <p style=\"margin: 0; font-size: 12px; color: #888;\">\n      Email ini dikirim otomatis oleh n8n Decommission Workflow<br>\n      ${timestamp} WIB\n    </p>\n  </div>\n</body>\n</html>\n`.trim();\n\nreturn [{\n  json: {\n    subject,\n    body,\n    to           : requestedBy,\n    server_name  : serverName,\n    timestamp\n  }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        480,
+        784
+      ],
+      "id": "4b4ef907-d48f-4458-8d26-87a73b394624",
+      "name": "Parse Dissapproval"
+    },
+    {
+      "parameters": {
+        "executeOnce": false,
+        "command": "=/home/node/secrets/get-key.sh 10.70.0.59"
+      },
+      "type": "n8n-nodes-base.executeCommand",
+      "typeVersion": 1,
+      "position": [
+        2272,
+        544
+      ],
+      "id": "149da3d6-30f3-4099-8155-68c7e9750747",
+      "name": "Get Private Security",
+      "notesInFlow": false,
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "executeOnce": false,
+        "command": "=/home/node/secrets/get-key.sh 10.70.0.25"
+      },
+      "type": "n8n-nodes-base.executeCommand",
+      "typeVersion": 1,
+      "position": [
+        2816,
+        512
+      ],
+      "id": "c7ba5866-f393-4b10-ac80-181032e905fc",
+      "name": "Get Private Monitor",
+      "notesInFlow": false,
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "jsCode": "for (const item of $input.all()) {\n  try {\n    // Memeriksa apakah ada data di dalam stdout\n    if (item.json.stdout) {\n      \n      // Mem-parse string JSON dari stdout menjadi objek sungguhan\n      const parsedData = JSON.parse(item.json.stdout);\n\n      // Memindahkan semua kunci dan nilai ke tingkat teratas (root) item.json\n      Object.assign(item.json, parsedData);\n\n      // Membersihkan properti lama agar output n8n terlihat lebih rapi (Opsional)\n      delete item.json.stdout;\n      delete item.json.stderr;\n      delete item.json.exitCode;\n    }\n  } catch (error) {\n    // Jika output gagal diparse, tangkap errornya agar workflow tidak crash\n    item.json.error = \"Gagal mem-parse JSON: \" + error.message;\n  }\n}\n\nreturn $input.all();"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2448,
+        528
+      ],
+      "id": "9fd12d87-e2dc-46d0-919b-fe61e186ad25",
+      "name": "Parse Script Security"
+    },
+    {
+      "parameters": {
+        "jsCode": "for (const item of $input.all()) {\n  try {\n    // Memeriksa apakah ada data di dalam stdout\n    if (item.json.stdout) {\n      \n      // Mem-parse string JSON dari stdout menjadi objek sungguhan\n      const parsedData = JSON.parse(item.json.stdout);\n\n      // Memindahkan semua kunci dan nilai ke tingkat teratas (root) item.json\n      Object.assign(item.json, parsedData);\n\n      // Membersihkan properti lama agar output n8n terlihat lebih rapi (Opsional)\n      delete item.json.stdout;\n      delete item.json.stderr;\n      delete item.json.exitCode;\n    }\n  } catch (error) {\n    // Jika output gagal diparse, tangkap errornya agar workflow tidak crash\n    item.json.error = \"Gagal mem-parse JSON: \" + error.message;\n  }\n}\n\nreturn $input.all();"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        3024,
+        496
+      ],
+      "id": "83d8a305-bef9-4491-a9f7-8c9e506824c2",
+      "name": "Parse Script Monitor"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Webhook": {
+      "main": [
+        []
+      ]
+    },
+    "Security Update": {
+      "main": [
+        [
+          {
+            "node": "Get Private Monitor",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Send a text message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Monitoring Update": {
+      "main": [
+        [],
+        [
+          {
+            "node": "Send a text message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Spec Server": {
+      "main": [
+        [
+          {
+            "node": "Get VM",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get VM": {
+      "main": [
+        [
+          {
+            "node": "AI Summary",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Data Ingestion Parse Script": {
+      "main": [
+        [
+          {
+            "node": "Data Ingestion Update",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Analyze CMDB": {
+      "main": [
+        []
+      ]
+    },
+    "On form submission": {
+      "main": [
+        [
+          {
+            "node": "Get Spec Server",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Private Key Data Ingestion": {
+      "main": [
+        [
+          {
+            "node": "Data Ingestion Parse Script",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Send a text message1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Data Ingestion Update": {
+      "main": [
+        [
+          {
+            "node": "Data Ingestion Update1",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Send a text message1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format Get VM": {
+      "main": [
+        [
+          {
+            "node": "Loop Over Items",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Backup Command": {
+      "main": [
+        [
+          {
+            "node": "Loop Over Items",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Send a text message1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Loop Over Items": {
+      "main": [
+        [
+          {
+            "node": "Format Email",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Get Private Backup",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Agent": {
+      "main": [
+        []
+      ]
+    },
+    "Format Data AI": {
+      "main": [
+        [
+          {
+            "node": "Approval Level 1 - Team Lead",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Validation": {
+      "main": [
+        [
+          {
+            "node": "Format Get VM",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Parse Dissapproval",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Data Ingestion Update1": {
+      "main": [
+        [
+          {
+            "node": "Get Data CMDB",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Send a text message1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Approval Level 1 - Team Lead": {
+      "main": [
+        [
+          {
+            "node": "Validation",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Approval Level 2 - Manager": {
+      "main": [
+        [
+          {
+            "node": "Validation1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Validation1": {
+      "main": [
+        [
+          {
+            "node": "Approval Level 3 - Director",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Parse Dissapproval",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Validation2": {
+      "main": [
+        [],
+        [
+          {
+            "node": "Parse Dissapproval",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Approval Level 3 - Director": {
+      "main": [
+        [
+          {
+            "node": "Validation2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Summary": {
+      "main": [
+        [
+          {
+            "node": "Format Data AI",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format Email": {
+      "main": [
+        [
+          {
+            "node": "Confirm Backup Done",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Confirm Backup Done": {
+      "main": [
+        [
+          {
+            "node": "Get Private Key Data Ingestion",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Update Status CMDB": {
+      "main": [
+        [
+          {
+            "node": "Get Asset Repository",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Asset Repository": {
+      "main": [
+        [
+          {
+            "node": "Format Path",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format Path": {
+      "main": [
+        [
+          {
+            "node": "Asset Repository Update",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Data CMDB": {
+      "main": [
+        [
+          {
+            "node": "Update Status CMDB",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Asset Repository Update": {
+      "main": [
+        [
+          {
+            "node": "Get Private Security",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Private Backup": {
+      "main": [
+        [
+          {
+            "node": "Parse Private Key Backup",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Send a text message1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse Private Key Backup": {
+      "main": [
+        [
+          {
+            "node": "Backup Command",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse Dissapproval": {
+      "main": [
+        [
+          {
+            "node": "Send Dissapprove",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Private Security": {
+      "main": [
+        [
+          {
+            "node": "Parse Script Security",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Send a text message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Private Monitor": {
+      "main": [
+        [
+          {
+            "node": "Parse Script Monitor",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Send a text message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse Script Security": {
+      "main": [
+        [
+          {
+            "node": "Security Update",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse Script Monitor": {
+      "main": [
+        [
+          {
+            "node": "Monitoring Update",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "69e8dc00-df22-412f-8626-abcb38d7b7c6",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "bc632429a034f451d265e91a966ade9d811938b3e55548c58a69fcde649c15df"
+  },
+  "id": "H6HArOhm3r9d49XT",
+  "tags": []
+}

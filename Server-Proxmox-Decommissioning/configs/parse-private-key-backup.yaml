@@ -1,0 +1,23 @@
+for (const item of $input.all()) {
+  try {
+    // Memeriksa apakah ada data di dalam stdout
+    if (item.json.stdout) {
+      
+      // Mem-parse string JSON dari stdout menjadi objek sungguhan
+      const parsedData = JSON.parse(item.json.stdout);
+
+      // Memindahkan semua kunci dan nilai ke tingkat teratas (root) item.json
+      Object.assign(item.json, parsedData);
+
+      // Membersihkan properti lama agar output n8n terlihat lebih rapi (Opsional)
+      delete item.json.stdout;
+      delete item.json.stderr;
+      delete item.json.exitCode;
+    }
+  } catch (error) {
+    // Jika output gagal diparse, tangkap errornya agar workflow tidak crash
+    item.json.error = "Gagal mem-parse JSON: " + error.message;
+  }
+}
+
+return $input.all();

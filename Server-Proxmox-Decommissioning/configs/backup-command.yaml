@@ -1,0 +1,2 @@
+Command
+ssh -o StrictHostKeyChecking=no -o BatchMode=yes -i {{ $json.privateKeyPath }} {{ $json.username }}@{{ $json.host }} powershell.exe -ExecutionPolicy Bypass -File "C:\script\backup-vm.ps1" -VMName "{{ $('Format Get VM').item.json.vm_name }}"

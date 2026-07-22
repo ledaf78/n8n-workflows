@@ -1,0 +1,2 @@
+Command
+ssh -o StrictHostKeyChecking=no -o BatchMode=yes -i {{ $json.privateKeyPath }} {{ $json.username }}@{{ $json.host }} "/home/infra/dcim-automation/docker/n8n/secrets/remove_prometheus_target.sh {{ $('On form submission').first().json["IP Management Server"] }}"

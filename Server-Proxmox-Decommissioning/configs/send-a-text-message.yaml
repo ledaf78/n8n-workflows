@@ -1,0 +1,2 @@
+Text
+{{ $json.stdout || $json.stderr || $json.error }}

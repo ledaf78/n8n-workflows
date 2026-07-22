@@ -1,0 +1,2 @@
+Command
+ssh -o StrictHostKeyChecking=no -o BatchMode=yes -i {{ $('Data Ingestion Parse Script').item.json.privateKeyPath }} {{ $('Data Ingestion Parse Script').item.json.username }}@{{ $('Data Ingestion Parse Script').item.json.host }} "/home/infra/dcim_metrics_project/scripts/remove_redfish_poller.sh {{ $('On form submission').first().json["IP Management Server"] }}"

@@ -1,0 +1,70 @@
+// Ambil data form pengajuan decommission
+const formData    = $('On form submission').item.json;
+const serverName  = formData['Nama Server']  
+                 || formData['Server Name']  
+                 || 'Unknown Server';
+const requestedBy = formData['Email']        
+                 || formData['Pengaju'] 
+                 || 'Unknown';
+
+const timestamp = new Date().toLocaleString('id-ID', {
+  timeZone : 'Asia/Jakarta',
+  day      : '2-digit',
+  month    : 'long',
+  year     : 'numeric',
+  hour     : '2-digit',
+  minute   : '2-digit',
+  second   : '2-digit'
+});
+
+const subject = `❌ Decommission Ditolak — ${serverName} [${timestamp}]`;
+
+const body = `
+<!DOCTYPE html>
+<html>
+<body style="font-family: Arial, sans-serif; color: #333; max-width: 600px; margin: 0 auto;">
+  <div style="background: #d93025; padding: 20px; border-radius: 8px 8px 0 0;">
+    <h2 style="color: white; margin: 0;">❌ Decommission Ditolak</h2>
+    <p style="color: #fce8e6; margin: 5px 0 0 0;">Decommission Workflow Notification</p>
+  </div>
+  <div style="background: #f8f9fa; padding: 20px; border: 1px solid #dadce0;">
+    <table style="width: 100%; border-collapse: collapse;">
+      <tr>
+        <td style="padding: 8px; font-weight: bold; width: 40%; color: #555;">Server</td>
+        <td style="padding: 8px;">${serverName}</td>
+      </tr>
+      <tr style="background: #fff;">
+        <td style="padding: 8px; font-weight: bold; color: #555;">Requested By</td>
+        <td style="padding: 8px;">${requestedBy}</td>
+      </tr>
+      <tr>
+        <td style="padding: 8px; font-weight: bold; color: #555;">Waktu Keputusan</td>
+        <td style="padding: 8px;">${timestamp}</td>
+      </tr>
+    </table>
+
+    <div style="margin-top: 20px; background: #fce8e6; border-left: 4px solid #d93025; padding: 12px;">
+      <p style="margin: 0; color: #a50e0e;">
+        <strong>❌ Permintaan decommission server <u>${serverName}</u> tidak disetujui.</strong>
+      </p>
+    </div>
+  </div>
+  <div style="background: #f1f3f4; padding: 12px; border-radius: 0 0 8px 8px; text-align: center;">
+    <p style="margin: 0; font-size: 12px; color: #888;">
+      Email ini dikirim otomatis oleh n8n Decommission Workflow<br>
+      ${timestamp} WIB
+    </p>
+  </div>
+</body>
+</html>
+`.trim();
+
+return [{
+  json: {
+    subject,
+    body,
+    to           : requestedBy,
+    server_name  : serverName,
+    timestamp
+  }
+}];

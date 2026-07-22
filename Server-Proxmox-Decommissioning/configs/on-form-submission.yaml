@@ -1,0 +1,13 @@
+form elements:
+  - field name: Pengaju
+  - element type: text
+    Placeholder: 
+    Required field: true
+  - field name: Nama Server
+  - element type: text
+    Placeholder: 
+    Required field: true
+  - field name: IP Management Server
+  - element type: text
+    Placeholder: 
+    Required field: true

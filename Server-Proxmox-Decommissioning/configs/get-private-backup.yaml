@@ -1,0 +1,2 @@
+Command
+/home/node/secrets/get-key.sh {{ $('On form submission').item.json["IP Management Server"] }}
